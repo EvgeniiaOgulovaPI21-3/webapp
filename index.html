@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Тестовое задание Typescript - Node.js</title>
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .custom-file-input ~ .custom-file-label::after {
+      content: "Выберите файл";
+    }
+  </style>
+</head>
+<body>
+<div class="container mt-4">
+  <h1 class="mb-4">Загрузить файл на Яндекс.Диск</h1>
+  <form id="uploadForm" enctype="multipart/form-data" method="post" class="mb-4">
+    <div class="form-group custom-file">
+      <input type="file" name="file" id="fileInput" class="custom-file-input"/>
+      <label class="custom-file-label" for="fileInput">Выберите файл</label>
+    </div>
+    <button type="submit" class="btn btn-success mt-2">Загрузить</button>
+  </form>
+  <p>Максимальный размер файла: 50 кб</p>
+  <p>Допустимое расширение файла: .docx</p>
+  <button id="viewFileButton" class="btn btn-info mt-2" style="display: none;">Посмотреть содержимое файла</button>
+
+  <h2 class="mt-4">Удалить файл с Яндекс.Диска</h2>
+  <form id="deleteForm" class="mb-4">
+    <div class="form-group">
+      <input type="text" name="fileName" id="fileNameInput" class="form-control" placeholder="Введите название файла"/>
+    </div>
+    <button type="submit" class="btn btn-danger">Удалить</button>
+  </form>
+</div>
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+  const allowedExtensions = ['.docx'];
+  const maxFileSize = 50 * 1024; // 50 кб
+
+  let uploadedFilePath;
+
+  document.getElementById('fileInput').addEventListener('change', function(event) {
+    const fileName = event.target.files[0]?.name || 'Выберите файл';
+    event.target.nextElementSibling.innerText = fileName;
+  });
+
+  document.getElementById('uploadForm').onsubmit = async function(event) {
+    event.preventDefault();
+    const fileInput = document.querySelector('input[type="file"]');
+    const file = fileInput.files[0];
+
+    if (!file) {
+      alert('Файл не выбран!\nПожалуйста, выберите файл.');
+      return;
+    }
+
+    const fileExtension = file.name.slice(file.name.lastIndexOf('.'));
+    if (!allowedExtensions.includes(fileExtension)) {
+      alert('Ошибка расширения файла!\nДопустимое разрешение: .docx');
+      document.getElementById('viewFileButton').style.display = 'none';
+      return;
+    }
+
+    if (file.size > maxFileSize) {
+      alert('Ошибка размера файла!\nМаксимальный размер: 50 КБ.');
+      document.getElementById('viewFileButton').style.display = 'none';
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch('/upload', {
+      method: 'POST',
+      body: formData
+    });
+    const result = await response.text();
+    if (response.status === 400) {
+      alert(result);
+      document.getElementById('viewFileButton').style.display = 'none';
+    } else {
+      alert(result);
+      uploadedFilePath = result.split('\n')[1].split('Path: ')[1];
+      document.getElementById('viewFileButton').style.display = 'block';
+    }
+  };
+
+  document.getElementById('viewFileButton').onclick = async function(event) {
+    event.preventDefault();
+    if (!uploadedFilePath) {
+      alert('No file uploaded to view.');
+      return;
+    }
+    const response = await fetch(`/get-file-content?path=${encodeURIComponent(uploadedFilePath)}`, {
+      method: 'GET'
+    });
+    if (response.status === 200) {
+      const fileContent = await response.text();
+      const contentWindow = window.open('', '_blank');
+      contentWindow.document.write('<pre>' + fileContent + '</pre>');
+    } else {
+      const result = await response.text();
+      alert(result);
+    }
+  };
+
+  document.getElementById('deleteForm').onsubmit = async function(event) {
+    event.preventDefault();
+    const fileNameInput = document.getElementById('fileNameInput').value;
+    if (!fileNameInput) {
+      alert('Файл не выбран!\nПожалуйста, введите название файла, который вы хотите удалить.');
+      return;
+    }
+
+    const response = await fetch(`/delete-file?name=${encodeURIComponent(fileNameInput)}`, {
+      method: 'DELETE'
+    });
+    const result = await response.text();
+    alert(result);
+  };
+</script>
+</body>
+</html>
