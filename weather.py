@@ -48,7 +48,7 @@ def aggregate_weather_data(df):
 
 st.title('Прогноз погоды на несколько дней')
 city = st.text_input('Введите название города', 'Москва')
-api_key = '30c5ace8e050061388a3ba5ecc06b782'
+api_key = 'yourApiKey'
 
 if st.button('Получить прогноз погоды'):
     weather_data = get_weather_forecast(city, api_key)
